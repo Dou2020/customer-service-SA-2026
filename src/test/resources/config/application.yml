@@ -1,0 +1,5 @@
+# Solo para las pruebas. Spring Boot carga classpath:/config/application.yml además del
+# application.yml principal (y con más prioridad), así que esto solo agrega o sobrescribe.
+mensajeria:
+  relay:
+    intervalo: 200

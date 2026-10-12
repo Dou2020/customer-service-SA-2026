@@ -1,0 +1,59 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: customer-service
+  datasource:
+    # Dentro del compose: customer-db:5432. Con mvn desde el host: localhost:5437,
+    # el puerto publicado (el 5432 del host suele ser un postgres local).
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5437}/customer_db
+    username: ${DB_USER:customer_svc}
+    password: ${DB_PASSWORD:customer_svc}
+  jpa:
+    # El esquema lo define Flyway; Hibernate solo verifica que las entidades coincidan.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  web:
+    # Locale fijo: los mensajes de Bean Validation salen en español sin depender
+    # del Accept-Language del cliente.
+    locale: es
+    locale-resolver: fixed
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:transporte}
+    password: ${RABBITMQ_PASSWORD:transporte}
+    # El relay espera la confirmación del broker antes de marcar la outbox como publicada.
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        # Agotados los reintentos, el mensaje va a la DLQ (dead-letter de la cola), no
+        # de vuelta a la cola.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5          # 1 intento + 4 reintentos: 1 s, 2 s, 4 s, 8 s
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 8s
+
+mensajeria:
+  relay:
+    # Milisegundos entre pasadas del relay de la outbox.
+    intervalo: 1000
+
+alquiler:
+  # La distancia estimada es la línea recta entre origen y destino por este factor: ningún
+  # camino va en línea recta (supuesto 8). El admin corrige el precio al confirmarlo.
+  factor-carretera: 1.3
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    # El X-Correlation-Id (CorrelationIdFilter) en cada línea, para seguir un flujo entre servicios.
+    level: "%5p [%X{correlationId:-}]"

@@ -1,0 +1,64 @@
+# customer-service y su base. Proyecto Compose propio: se levanta, actualiza o borra sin tocar a
+# los demás servicios. Se usa con  ./stack.sh up customer-service  (README, "Levantar en
+# desarrollo"). RabbitMQ está en el proyecto infra; customer no usa Redis.
+#
+# customer-db solo está en la red privada del proyecto, así que ningún otro servicio puede
+# resolverla. customer-service está además en "transporte", donde lo encuentran el gateway y
+# sales (S4 y S5 por /internal/), y donde está RabbitMQ. Los puertos solo se publican en
+# 127.0.0.1, para psql, DBeaver y Swagger desde el host.
+
+name: customer-service
+
+services:
+  customer-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: ${CUSTOMER_DB_USER}
+      POSTGRES_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5437:5432"
+    volumes:
+      - customer-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    mem_limit: 256m
+    restart: unless-stopped
+
+  customer-service:
+    build: .
+    ports:
+      - "127.0.0.1:8087:8087"
+    environment:
+      DB_HOST: customer-db
+      DB_PORT: "5432"
+      DB_USER: ${CUSTOMER_DB_USER}
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=50   # mismo criterio que identity-service
+    # Solo su base: RabbitMQ es de otro proyecto. Si no está listo, Spring AMQP reintenta la
+    # conexión y el healthcheck queda en rojo hasta que llegue.
+    depends_on:
+      customer-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8087/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    mem_limit: 768m
+    networks: [default, transporte]
+    restart: unless-stopped
+
+networks:
+  transporte:
+    external: true
+
+volumes:
+  customer-db-data:
