@@ -96,7 +96,7 @@ son los de identity ([Errores](../identity-service/API.md#errores)). Lo propio d
 |---|---|---|
 | `409` | `Tu cuenta se está terminando de configurar. Intenta de nuevo en unos segundos` | Cuenta propia sin cliente todavía ([Autenticación](#autenticación)) |
 | `409` | el de la transición (ver cada endpoint de alquiler) | Un cambio de estado que el ciclo de vida no permite |
-| `422` | `El NIT solo puede tener dígitos y terminar en un dígito o K` · `El NIT no es válido: revisa el dígito verificador` | NIT mal escrito (misma regla que identity) |
+| `422` | `El NIT solo puede tener dígitos y terminar en un dígito o K` | NIT con formato inválido (misma regla que identity; el dígito verificador no se valida) |
 | `422` | `No tienes saldo suficiente en tu cartera. Recárgala e intenta de nuevo` | Débito de alquiler o de boletos sin saldo |
 | `503` | `El servicio no está disponible en este momento. Intenta de nuevo en unos minutos` | Otro servicio no respondió (customer hoy no llama a nadie) |
 
@@ -359,7 +359,7 @@ El cajero o el admin registra la solicitud de un cliente que llega a la sucursal
 | `nit` | string | no | hasta 20; misma regla que identity. Vacío o `CF` es el cliente genérico (consumidor final). Si el NIT no es cliente, se crea; si es de una cuenta, el alquiler aparece en su historial |
 | `nombre` | string | no | hasta 150; solo para un NIT nuevo (si no, `Cliente NIT <nit>`). No renombra a un cliente que ya existe |
 
-**`201`** — `AlquilerResponse` con `canal: PRESENCIAL`. `422` con los mensajes del NIT.
+**`201`** — `AlquilerResponse` con `canal: PRESENCIAL`. `422` con el mensaje de formato del NIT.
 
 ### `GET /api/alquileres/mios`
 
@@ -537,7 +537,7 @@ S5 en mostrador: el cliente de una venta por su NIT.
 ```
 
 `correo` es `null` en un cliente de mostrador sin cuenta (sales lo manda en `BoletosVendidos` para el
-correo de confirmación). `422` con los mensajes del NIT.
+correo de confirmación). `422` con el mensaje de formato del NIT.
 
 **Efectos:** si el NIT no existe, crea el cliente. Dos cajeros a la vez, o un cajero y la confirmación
 de una cuenta con ese NIT, terminan con un solo cliente: la UQ de `cliente.nit` decide (README del

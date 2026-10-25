@@ -33,7 +33,7 @@ public class ResolucionDeClientes {
      * en su cliente y aparece en su historial de inmediato.
      *
      * @param nombre el que escribe el cajero para un NIT nuevo; no reemplaza el de un cliente existente
-     * @throws gt.cunoc.sa.customer.domain.NitInvalidoException si el dígito verificador no cuadra (422)
+     * @throws gt.cunoc.sa.customer.domain.NitInvalidoException si el NIT no tiene formato válido (422)
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public ClienteEntity porNit(String nitEscrito, String nombre) {

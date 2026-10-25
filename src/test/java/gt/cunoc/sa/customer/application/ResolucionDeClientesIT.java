@@ -79,12 +79,10 @@ class ResolucionDeClientesIT {
     }
 
     @Test
-    void unNitConDigitoVerificadorInvalidoResponde422() throws Exception {
-        String nit = Escenario.nit();
-        char malo = nit.charAt(nit.length() - 1) == '0' ? '1' : '0';
-        resolver(Map.of("nit", nit.substring(0, nit.length() - 1) + malo))
+    void unNitConFormatoInvalidoResponde422() throws Exception {
+        resolver(Map.of("nit", "12A45"))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.detail").value("El NIT no es válido: revisa el dígito verificador"));
+                .andExpect(jsonPath("$.detail").value("El NIT solo puede tener dígitos y terminar en un dígito o K"));
     }
 
     @Test

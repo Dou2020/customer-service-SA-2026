@@ -121,7 +121,7 @@ customer-service/
     │   │   │   ├── EstadoAlquiler.java · Canal.java · TipoMovimiento.java · EstadoCompra.java · TipoTarifa.java
     │   │   │   ├── TransicionInvalidaException.java   cambio de estado no permitido → 409
     │   │   │   ├── Rol.java                    SYS_ADMIN, BRANCH_ADMIN, CASHIER, DRIVER, CUSTOMER
-    │   │   │   ├── Nit.java                    normalización y dígito verificador módulo 11 (copiado de identity)
+    │   │   │   ├── Nit.java                    normalización y formato, sin dígito verificador (copiado de identity)
     │   │   │   ├── NitInvalidoException.java   → 422
     │   │   │   ├── Calendario.java             "hoy" en America/Guatemala, no en UTC
     │   │   │   └── ConIdAsignado.java          Persistable: persist() y no merge() con UUID asignado
@@ -188,7 +188,7 @@ customer-service/
         │   ├── CustomerApplicationTests.java   migraciones aplicadas y cliente genérico
         │   ├── SeguridadTest.java              401, 404, health y X-Correlation-Id
         │   ├── domain/
-        │   │   ├── NitTest.java                normalización, dígito verificador, K y CF
+        │   │   ├── NitTest.java                normalización, formato, K y CF
         │   │   ├── PrecioAlquilerTest.java     fórmula, días y redondeo
         │   │   ├── DistanciaTest.java          haversine y factor de carretera
         │   │   └── AlquilerEntityTest.java     transiciones del ciclo de vida

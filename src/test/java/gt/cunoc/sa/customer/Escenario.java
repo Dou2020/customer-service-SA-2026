@@ -16,7 +16,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import gt.cunoc.sa.customer.domain.Nit;
 import gt.cunoc.sa.customer.domain.Rol;
 import gt.cunoc.sa.customer.infrastructure.security.UsuarioActual;
 
@@ -159,11 +158,10 @@ public class Escenario {
         return prefijo + CONTADOR.incrementAndGet() + "-" + ThreadLocalRandom.current().nextInt(1_000_000);
     }
 
-    /** Un NIT con dígito verificador válido, distinto en cada llamada. */
+    /** Un NIT distinto en cada llamada. */
     public static String nit() {
-        String cuerpo = Integer.toString(10_000_000 + CONTADOR.incrementAndGet() * 7
+        return Integer.toString(10_000_000 + CONTADOR.incrementAndGet() * 7
                 + ThreadLocalRandom.current().nextInt(7));
-        return cuerpo + Nit.digitoVerificador(cuerpo);
     }
 
     public static String correo() {
