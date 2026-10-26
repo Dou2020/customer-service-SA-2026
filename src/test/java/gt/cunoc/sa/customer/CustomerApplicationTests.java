@@ -26,7 +26,32 @@ class CustomerApplicationTests {
         assertThat(tablas).contains("tarifa_alquiler", "cliente", "cartera", "movimiento_cartera", "alquiler",
                 "compra_boleto", "outbox_event", "processed_event");
         assertThat(jdbc.queryForObject(
-                "select count(*) from flyway_schema_history where success", Integer.class)).isEqualTo(2);
+                "select count(*) from flyway_schema_history where success", Integer.class)).isEqualTo(3);
+    }
+
+    /**
+     * V3: los ids de fleet, trip y sales son texto y la placa mide lo que en fleet; los propios y los
+     * de identity siguen siendo uuid.
+     */
+    @Test
+    void losIdsDeFleetTripYSalesSonTexto() {
+        List<String> columnas = jdbc.queryForList("""
+                select table_name || '.' || column_name || ' ' || data_type || coalesce('(' || character_maximum_length || ')', '')
+                from information_schema.columns
+                where table_schema = 'public'
+                  and (table_name, column_name) in (('compra_boleto', 'venta_id'), ('compra_boleto', 'viaje_id'),
+                       ('alquiler', 'viaje_id'), ('alquiler', 'bus_id'), ('alquiler', 'chofer_id'),
+                       ('movimiento_cartera', 'referencia_id'), ('movimiento_cartera', 'idempotency_key'),
+                       ('alquiler', 'bus_placa'), ('alquiler', 'sucursal_id'), ('compra_boleto', 'cliente_id'))""",
+                String.class);
+
+        assertThat(columnas).containsExactlyInAnyOrder(
+                "compra_boleto.venta_id character varying(64)", "compra_boleto.viaje_id character varying(64)",
+                "alquiler.viaje_id character varying(64)", "alquiler.bus_id character varying(64)",
+                "alquiler.chofer_id character varying(64)", "movimiento_cartera.referencia_id character varying(64)",
+                "movimiento_cartera.idempotency_key character varying(80)",
+                "alquiler.bus_placa character varying(20)",
+                "alquiler.sucursal_id uuid", "compra_boleto.cliente_id uuid");
     }
 
     /** El cliente genérico de las ventas sin NIT existe desde la migración, sin cuenta ni cartera. */

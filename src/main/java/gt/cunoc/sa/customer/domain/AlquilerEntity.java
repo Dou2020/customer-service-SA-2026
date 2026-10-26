@@ -27,7 +27,7 @@ import jakarta.persistence.Version;
  */
 @Entity
 @Table(name = "alquiler")
-public class AlquilerEntity extends ConIdAsignado {
+public class AlquilerEntity extends ConIdAsignado<UUID> {
 
     /** Pagado y todavía sin terminar: el viaje existe en trip y solo se cancela eliminándolo. */
     private static final Set<EstadoAlquiler> PAGADO_SIN_INICIAR = EnumSet.of(EstadoAlquiler.PAGADO,
@@ -98,16 +98,18 @@ public class AlquilerEntity extends ConIdAsignado {
     @Column(name = "fecha_pago")
     private LocalDate fechaPago;
 
-    @Column(name = "viaje_id")
-    private UUID viajeId;
+    // Ids de trip (viaje) y de fleet (bus, chofer) como texto (V3): se guardan tal cual llegan.
+    @Column(name = "viaje_id", length = 64)
+    private String viajeId;
 
-    @Column(name = "bus_id")
-    private UUID busId;
+    @Column(name = "bus_id", length = 64)
+    private String busId;
 
-    @Column(name = "chofer_id")
-    private UUID choferId;
+    @Column(name = "chofer_id", length = 64)
+    private String choferId;
 
-    @Column(name = "bus_placa", length = 10)
+    // 20, el largo de bus.placa en fleet (V3).
+    @Column(name = "bus_placa", length = 20)
     private String busPlaca;
 
     @Column(name = "chofer_nombre", length = 150)
@@ -211,7 +213,7 @@ public class AlquilerEntity extends ConIdAsignado {
      *
      * @return false si el alquiler no está pagado o el evento es más viejo que el último aplicado
      */
-    public boolean asignar(UUID viajeId, UUID busId, String busPlaca, UUID choferId, String choferNombre,
+    public boolean asignar(String viajeId, String busId, String busPlaca, String choferId, String choferNombre,
             long version) {
         if (!estaPagado() || (asignacionVersion != null && version <= asignacionVersion)) {
             return false;
@@ -229,7 +231,7 @@ public class AlquilerEntity extends ConIdAsignado {
     }
 
     /** ViajeIniciado (E8). @return false si ya había salido, terminado o se canceló */
-    public boolean iniciar(UUID viajeId) {
+    public boolean iniciar(String viajeId) {
         if (!PAGADO_SIN_INICIAR.contains(estado)) {
             return false;
         }
@@ -239,7 +241,7 @@ public class AlquilerEntity extends ConIdAsignado {
     }
 
     /** ViajeFinalizado (E9). Si el E8 no llegó todavía, el alquiler pasa directo a FINALIZADO. */
-    public boolean finalizar(UUID viajeId) {
+    public boolean finalizar(String viajeId) {
         if (!PAGADO_SIN_INICIAR.contains(estado) && estado != EstadoAlquiler.EN_CURSO) {
             return false;
         }
@@ -264,7 +266,7 @@ public class AlquilerEntity extends ConIdAsignado {
                 || estado == EstadoAlquiler.FINALIZADO;
     }
 
-    private void anotarViaje(UUID viajeId) {
+    private void anotarViaje(String viajeId) {
         if (this.viajeId == null) {
             this.viajeId = viajeId;
         }
@@ -343,15 +345,15 @@ public class AlquilerEntity extends ConIdAsignado {
         return fechaPago;
     }
 
-    public UUID getViajeId() {
+    public String getViajeId() {
         return viajeId;
     }
 
-    public UUID getBusId() {
+    public String getBusId() {
         return busId;
     }
 
-    public UUID getChoferId() {
+    public String getChoferId() {
         return choferId;
     }
 

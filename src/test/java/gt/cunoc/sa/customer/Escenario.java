@@ -63,14 +63,14 @@ public class Escenario {
         return jdbc.queryForObject("select id from cliente where generico", UUID.class);
     }
 
-    /** Una compra de boletos ya replicada (como la deja BoletosVendidos). */
-    public UUID compra(UUID clienteId, String canal) {
-        UUID ventaId = UUID.randomUUID();
+    /** Una compra de boletos ya replicada (como la deja BoletosVendidos), con ids numéricos como los de sales y trip. */
+    public String compra(UUID clienteId, String canal) {
+        String ventaId = idNumerico();
         jdbc.update("""
                 insert into compra_boleto (venta_id, cliente_id, canal, viaje_id, origen, destino, salida, asientos,
                                            total, fecha_pago, estado, version)
                 values (?, ?, ?, ?, 'Quetzaltenango', 'San Marcos', ?, '{1,2}', 70.00, ?, 'CONFIRMADA', 1)""",
-                ventaId, clienteId, canal, UUID.randomUUID(), Timestamp.from(Instant.parse("2026-10-20T14:00:00Z")),
+                ventaId, clienteId, canal, idNumerico(), Timestamp.from(Instant.parse("2026-10-20T14:00:00Z")),
                 LocalDate.of(2026, 10, 15));
         return ventaId;
     }
@@ -123,12 +123,12 @@ public class Escenario {
         return actual(Rol.CUSTOMER, null, null);
     }
 
-    /** Igual que el JWT de un DRIVER: trae choferId y no sucursal. */
-    public static UsuarioActual chofer(UUID choferId) {
+    /** Igual que el JWT de un DRIVER: trae choferId (el id de fleet, como texto) y no sucursal. */
+    public static UsuarioActual chofer(String choferId) {
         return actual(Rol.DRIVER, null, choferId);
     }
 
-    private static UsuarioActual actual(Rol rol, UUID sucursal, UUID chofer) {
+    private static UsuarioActual actual(Rol rol, UUID sucursal, String chofer) {
         return new UsuarioActual(UUID.randomUUID(), sucursal, chofer, Set.of(rol.name()));
     }
 
@@ -141,7 +141,7 @@ public class Escenario {
                 request.addHeader("X-Sucursal-Id", actual.sucursalId().toString());
             }
             if (actual.choferId() != null) {
-                request.addHeader("X-Chofer-Id", actual.choferId().toString());
+                request.addHeader("X-Chofer-Id", actual.choferId());
             }
             return request;
         };
@@ -156,6 +156,14 @@ public class Escenario {
     /** Un código único entre pruebas (referencias, idempotency keys de prueba). */
     public static String codigo(String prefijo) {
         return prefijo + CONTADOR.incrementAndGet() + "-" + ThreadLocalRandom.current().nextInt(1_000_000);
+    }
+
+    /**
+     * Un id como los de fleet, trip y sales (bigserial), distinto en cada llamada: para las ventas,
+     * que son la PK de compra_boleto en la base compartida.
+     */
+    public static String idNumerico() {
+        return Long.toString(1_000_000L * CONTADOR.incrementAndGet() + ThreadLocalRandom.current().nextInt(1_000_000));
     }
 
     /** Un NIT distinto en cada llamada. */

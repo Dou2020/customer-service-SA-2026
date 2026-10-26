@@ -112,8 +112,8 @@ customer-service/
     │   │   │   ├── ClienteEntity.java          cliente por NIT; usuario_id (enlace), genérico y lápida absorbido_por
     │   │   │   ├── CarteraEntity.java          saldo, solo lectura desde JPA (lo cambian los UPDATE condicionales)
     │   │   │   ├── MovimientoCarteraEntity.java fila del libro, inmutable, con su idempotency_key
-    │   │   │   ├── AlquilerEntity.java         ciclo de vida: transiciones del usuario (409) y de trip (solo avanzan)
-    │   │   │   ├── CompraBoletoEntity.java     réplica de una venta; gana la versión mayor de E11/E12
+    │   │   │   ├── AlquilerEntity.java         ciclo de vida: transiciones del usuario (409) y de trip (solo avanzan); viaje, bus y chofer como texto
+    │   │   │   ├── CompraBoletoEntity.java     réplica de una venta (ids de sales y trip como texto); gana la versión mayor de E11/E12
     │   │   │   ├── TarifaAlquilerEntity.java   réplica de una versión de tarifa (E2)
     │   │   │   ├── Trayecto.java               origen y destino con coordenadas
     │   │   │   ├── Distancia.java              haversine × factor de carretera
@@ -124,7 +124,7 @@ customer-service/
     │   │   │   ├── Nit.java                    normalización y formato, sin dígito verificador (copiado de identity)
     │   │   │   ├── NitInvalidoException.java   → 422
     │   │   │   ├── Calendario.java             "hoy" en America/Guatemala, no en UTC
-    │   │   │   └── ConIdAsignado.java          Persistable: persist() y no merge() con UUID asignado
+    │   │   │   └── ConIdAsignado.java          Persistable genérico: persist() y no merge() con id asignado (UUID, o el texto de sales)
     │   │   ├── application/               casos de uso compartidos entre recursos o sin endpoint; regla de alcance
     │   │   │   ├── ResolucionDeClientes.java    cliente por NIT (S5 y mostrador), de la cuenta, y el vigente tras una absorción
     │   │   │   ├── LibroCartera.java            débito, crédito, lápida y reembolso de lo debitado; claves de idempotencia
@@ -148,7 +148,7 @@ customer-service/
     │   │       │   ├── ProcessedEvent.java                 fila de processed_event
     │   │       │   ├── ProcessedEventRepository.java       INSERT … ON CONFLICT DO NOTHING
     │   │       │   ├── ListenerEventos.java                consume customer.events y llama al manejador de cada tipo
-    │   │       │   ├── Payloads.java                       payload → record del evento; ilegible o incompleto → DLQ
+    │   │       │   ├── Payloads.java                       payload → record del evento; ilegible, incompleto o con un id vacío o de más de 64 → DLQ
     │   │       │   ├── TopologiaRabbit.java                exchanges, cola, DLQ, alternate-exchange y los 8 bindings (E2, E4, E8–E12, E15)
     │   │       │   ├── ReintentosConfig.java               reintentos a 1, 2, 4 y 8 s; lo no reintentable va a la DLQ
     │   │       │   ├── EventoNoProcesableException.java    evento que nunca va a funcionar → DLQ
@@ -167,7 +167,7 @@ customer-service/
     │   │       ├── security/
     │   │       │   ├── SeguridadConfig.java                cadena de Spring Security; 401 y 403 como ProblemDetail
     │   │       │   ├── EncabezadosGatewayFilter.java       X-User-* del gateway → UsuarioActual
-    │   │       │   └── UsuarioActual.java                  principal: usuario, sucursal, chofer y roles
+    │   │       │   └── UsuarioActual.java                  principal: usuario, sucursal, chofer (texto, el id de fleet) y roles
     │   │       └── web/
     │   │           ├── CorrelationIdFilter.java            X-Correlation-Id → MDC y respuesta
     │   │           ├── DocumentacionConfig.java            OpenAPI: servidor relativo y bearerAuth
@@ -177,7 +177,9 @@ customer-service/
     │       └── db/migration/                   Flyway
     │           ├── V1__esquema_inicial.sql     cliente (con la fila genérica CF), cartera, movimientos, alquiler,
     │           │                               réplicas de tarifas y compras, outbox e inbox
-    │           └── V2__alquiler_asignacion.sql placa, chofer y versión de la asignación (E15); índice del reporte
+    │           ├── V2__alquiler_asignacion.sql placa, chofer y versión de la asignación (E15); índice del reporte
+    │           └── V3__ids_como_texto.sql      ids de fleet, trip y sales (venta, viaje, bus, chofer, referencia) a varchar(64);
+    │                                           idempotency_key a 80 por la clave del reembolso de una venta; bus_placa a 20, como fleet
     └── test/
         ├── java/gt/cunoc/sa/customer/
         │   ├── PruebaDeIntegracion.java        meta-anotación: un solo contexto para todas
@@ -185,8 +187,8 @@ customer-service/
         │   ├── Escenario.java                  usuarios del gateway, clientes, compras, alquileres y tarifas escritos directo en la base
         │   ├── Publicador.java                 publica eventos como identity, trip o sales; inbox y DLQ
         │   ├── ColaDePrueba.java               cola temporal que ve lo que publica el relay
-        │   ├── CustomerApplicationTests.java   migraciones aplicadas y cliente genérico
-        │   ├── SeguridadTest.java              401, 404, health y X-Correlation-Id
+        │   ├── CustomerApplicationTests.java   migraciones aplicadas, ids ajenos como texto y cliente genérico
+        │   ├── SeguridadTest.java              401, 404, health, X-Correlation-Id y un chofer con id numérico
         │   ├── domain/
         │   │   ├── NitTest.java                normalización, formato, K y CF
         │   │   ├── PrecioAlquilerTest.java     fórmula, días y redondeo
@@ -198,8 +200,8 @@ customer-service/
         │       ├── ResolucionDeClientesIT.java S5 y /api/clientes: genérico, NIT nuevo, concurrencia, 409 y 422
         │       ├── CarteraIT.java              recargas idempotentes, S4, débitos concurrentes y la lápida
         │       ├── AlquileresIT.java           ciclo por endpoints con E13, E14, E16, autorización y reporte
-        │       ├── CicloDeAlquileresIT.java    E15, E8, E9 y E10: avance, desorden y reembolso
-        │       └── HistorialIT.java            E11 y E12: historial, lápida, desorden y reembolso de lo debitado
+        │       ├── CicloDeAlquileresIT.java    E15, E8, E9 y E10: avance, desorden, reembolso, ids numéricos y DLQ por id inválido
+        │       └── HistorialIT.java            E11 y E12: historial, lápida, desorden, reembolso, ids numéricos y DLQ por id inválido
         └── resources/config/
             └── application.yml   intervalo corto del relay (se suma al principal)
 ```

@@ -15,15 +15,16 @@ import jakarta.persistence.Table;
 /**
  * Réplica de una venta de sales para el historial: la llenan BoletosVendidos (E11) y
  * BoletosAnulados (E12). Vive en la misma base que el enlace de la cuenta, así el historial es
- * una consulta local y no depende de que sales responda.
+ * una consulta local y no depende de que sales responda. La venta y el viaje son ids de sales y
+ * trip, como texto (V3): se guardan tal cual llegan.
  */
 @Entity
 @Table(name = "compra_boleto")
-public class CompraBoletoEntity extends ConIdAsignado {
+public class CompraBoletoEntity extends ConIdAsignado<String> {
 
     @Id
-    @Column(name = "venta_id")
-    private UUID ventaId;
+    @Column(name = "venta_id", length = 64)
+    private String ventaId;
 
     @Column(name = "cliente_id", nullable = false)
     private UUID clienteId;
@@ -32,8 +33,8 @@ public class CompraBoletoEntity extends ConIdAsignado {
     @Column(nullable = false, length = 10)
     private Canal canal;
 
-    @Column(name = "viaje_id", nullable = false)
-    private UUID viajeId;
+    @Column(name = "viaje_id", nullable = false, length = 64)
+    private String viajeId;
 
     @Column(nullable = false, length = 100)
     private String origen;
@@ -64,7 +65,7 @@ public class CompraBoletoEntity extends ConIdAsignado {
     protected CompraBoletoEntity() {
     }
 
-    public static CompraBoletoEntity nueva(UUID ventaId, long version, DatosCompra datos, EstadoCompra estado) {
+    public static CompraBoletoEntity nueva(String ventaId, long version, DatosCompra datos, EstadoCompra estado) {
         CompraBoletoEntity compra = new CompraBoletoEntity();
         compra.ventaId = ventaId;
         compra.version = -1;
@@ -98,16 +99,16 @@ public class CompraBoletoEntity extends ConIdAsignado {
     }
 
     /** Lo que E11 y E12 cuentan de la venta; clienteId ya resuelto (siguiendo absorbido_por). */
-    public record DatosCompra(UUID clienteId, Canal canal, UUID viajeId, String origen, String destino,
+    public record DatosCompra(UUID clienteId, Canal canal, String viajeId, String origen, String destino,
             Instant salida, short[] asientos, BigDecimal total, LocalDate fechaPago) {
     }
 
     @Override
-    public UUID getId() {
+    public String getId() {
         return ventaId;
     }
 
-    public UUID getVentaId() {
+    public String getVentaId() {
         return ventaId;
     }
 
@@ -119,7 +120,7 @@ public class CompraBoletoEntity extends ConIdAsignado {
         return canal;
     }
 
-    public UUID getViajeId() {
+    public String getViajeId() {
         return viajeId;
     }
 

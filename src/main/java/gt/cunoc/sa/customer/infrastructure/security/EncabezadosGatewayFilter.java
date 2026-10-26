@@ -44,7 +44,7 @@ public class EncabezadosGatewayFilter extends OncePerRequestFilter {
                 UsuarioActual usuario = new UsuarioActual(
                         UUID.fromString(usuarioId),
                         uuidOpcional(request.getHeader(SUCURSAL)),
-                        uuidOpcional(request.getHeader(CHOFER)),
+                        textoOpcional(request.getHeader(CHOFER)),
                         roles(request.getHeader(ROLES)));
                 List<SimpleGrantedAuthority> autoridades = usuario.roles().stream()
                         .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol))
@@ -52,8 +52,8 @@ public class EncabezadosGatewayFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(
                         UsernamePasswordAuthenticationToken.authenticated(usuario, null, autoridades));
             } catch (IllegalArgumentException e) {
-                // Un id que no es UUID no lo escribe el gateway: se trata como anónimo y
-                // la cadena responde 401.
+                // Un usuario o una sucursal que no es UUID no lo escribe el gateway: se trata
+                // como anónimo y la cadena responde 401.
                 SecurityContextHolder.clearContext();
             }
         }
@@ -62,6 +62,14 @@ public class EncabezadosGatewayFilter extends OncePerRequestFilter {
 
     private static UUID uuidOpcional(String valor) {
         return valor == null || valor.isBlank() ? null : UUID.fromString(valor);
+    }
+
+    /**
+     * El chofer es un id de fleet ("3"), no un UUID: si se leyera como UUID, todo request de un
+     * DRIVER saldría 401 y el frontend cerraría su sesión.
+     */
+    private static String textoOpcional(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     private static Set<String> roles(String valor) {

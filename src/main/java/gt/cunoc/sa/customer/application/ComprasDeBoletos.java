@@ -77,12 +77,14 @@ public class ComprasDeBoletos {
                 v.origen(), v.destino(), v.salida(), v.asientos(), v.total(), v.fechaPago()));
         LocalDate fecha = sobre.occurredAt() == null ? Calendario.hoy()
                 : LocalDate.ofInstant(sobre.occurredAt(), Calendario.ZONA);
-        libro.reembolsar(v.ventaId().toString(), LibroCartera.claveReembolsoVenta(v.ventaId()), fecha)
+        libro.reembolsar(v.ventaId(), LibroCartera.claveReembolsoVenta(v.ventaId()), fecha)
                 .ifPresent(r -> log.info("Venta {} anulada: se devolvieron {} a la cartera", v.ventaId(), r.getMonto()));
     }
 
-    private void replicar(Sobre sobre, UUID ventaId, UUID clienteId, EstadoCompra estado, Venta venta) {
-        Payloads.exigir(ventaId != null && clienteId != null && venta.completa(), sobre, "datos de la venta");
+    private void replicar(Sobre sobre, String ventaId, UUID clienteId, EstadoCompra estado, Venta venta) {
+        Payloads.exigirId(ventaId, sobre, "ventaId");
+        Payloads.exigirId(venta.viajeId(), sobre, "viajeId");
+        Payloads.exigir(clienteId != null && venta.completa(), sobre, "datos de la venta");
         ClienteEntity cliente = resolucion.vigente(clienteId);
         if (cliente == null) {
             throw new EventoNoProcesableException("La venta " + ventaId + " es de un cliente que customer no conoce");
@@ -111,12 +113,12 @@ public class ComprasDeBoletos {
         return numeros;
     }
 
-    /** Lo que E11 y E12 traen de la venta. */
-    private record Venta(Canal canal, UUID viajeId, String origen, String destino, Instant salida,
+    /** Lo que E11 y E12 traen de la venta; el viajeId (texto de trip) se valida aparte. */
+    private record Venta(Canal canal, String viajeId, String origen, String destino, Instant salida,
             List<Integer> asientos, BigDecimal total, LocalDate fechaPago) {
 
         boolean completa() {
-            return canal != null && viajeId != null && origen != null && destino != null && salida != null
+            return canal != null && origen != null && destino != null && salida != null
                     && asientos != null && !asientos.isEmpty() && total != null && fechaPago != null;
         }
     }

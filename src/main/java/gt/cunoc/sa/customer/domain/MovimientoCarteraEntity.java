@@ -43,11 +43,11 @@ public class MovimientoCarteraEntity {
     @Column(nullable = false)
     private LocalDate fecha;
 
-    // La venta o el alquiler que lo originó.
-    @Column(name = "referencia_id")
-    private UUID referenciaId;
+    // La venta (texto de sales) o el alquiler que lo originó.
+    @Column(name = "referencia_id", length = 64)
+    private String referenciaId;
 
-    @Column(name = "idempotency_key", nullable = false, length = 64, unique = true)
+    @Column(name = "idempotency_key", nullable = false, length = 80, unique = true)
     private String idempotencyKey;
 
     @Column(name = "saldo_resultante", nullable = false, precision = 12, scale = 2)
@@ -60,7 +60,7 @@ public class MovimientoCarteraEntity {
     }
 
     public MovimientoCarteraEntity(UUID clienteId, TipoMovimiento tipo, BigDecimal monto, LocalDate fecha,
-            UUID referenciaId, String idempotencyKey, BigDecimal saldoResultante, Instant ahora) {
+            String referenciaId, String idempotencyKey, BigDecimal saldoResultante, Instant ahora) {
         this.clienteId = clienteId;
         this.tipo = tipo;
         this.monto = monto;
@@ -91,7 +91,7 @@ public class MovimientoCarteraEntity {
         return fecha;
     }
 
-    public UUID getReferenciaId() {
+    public String getReferenciaId() {
         return referenciaId;
     }
 

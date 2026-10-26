@@ -85,8 +85,9 @@ public class DebitosService {
     private Debito aplicar(UUID clienteId, String clave, DebitoRequest solicitud) {
         exigirCartera(clienteId);
         LocalDate fecha = solicitud.fecha() == null ? Calendario.hoy() : solicitud.fecha();
-        return libro.debitar(clienteId, TipoMovimiento.DEBITO_BOLETO, solicitud.monto(), fecha,
-                        solicitud.referenciaId(), clave)
+        // S4 sigue pidiendo un UUID en referenciaId; el libro lo guarda como texto (V3).
+        String referencia = solicitud.referenciaId() == null ? null : solicitud.referenciaId().toString();
+        return libro.debitar(clienteId, TipoMovimiento.DEBITO_BOLETO, solicitud.monto(), fecha, referencia, clave)
                 .map(debito -> new Debito(DebitoResponse.aplicado(debito), true))
                 .orElseThrow(() -> ErrorDeNegocio.noProcesable(LibroCartera.SALDO_INSUFICIENTE));
     }

@@ -48,7 +48,8 @@ public class LibroCartera {
         return "ALQUILER:" + alquilerId;
     }
 
-    public static String claveReembolsoVenta(UUID ventaId) {
+    /** El ventaId es el texto que sales manda (su Idempotency-Key de S4): la clave llega a 74 de los 80. */
+    public static String claveReembolsoVenta(String ventaId) {
         return "REEMBOLSO:" + ventaId;
     }
 
@@ -56,10 +57,14 @@ public class LibroCartera {
         return "REEMBOLSO-ALQUILER:" + alquilerId;
     }
 
-    /** RECARGA o REEMBOLSO. Quien llama ya comprobó que el cliente tiene cartera. */
+    /**
+     * RECARGA o REEMBOLSO. Quien llama ya comprobó que el cliente tiene cartera.
+     *
+     * @param referenciaId la venta (texto de sales) o el alquiler; null en una recarga
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public MovimientoCarteraEntity acreditar(UUID clienteId, TipoMovimiento tipo, BigDecimal monto, LocalDate fecha,
-            UUID referenciaId, String clave) {
+            String referenciaId, String clave) {
         BigDecimal saldo = carteras.acreditar(clienteId, monto)
                 .orElseThrow(() -> new IllegalStateException("El cliente " + clienteId + " no tiene cartera"));
         // saveAndFlush: si la clave ya existe, la UQ falla aquí y no al confirmar.
@@ -74,7 +79,7 @@ public class LibroCartera {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public Optional<MovimientoCarteraEntity> debitar(UUID clienteId, TipoMovimiento tipo, BigDecimal monto,
-            LocalDate fecha, UUID referenciaId, String clave) {
+            LocalDate fecha, String referenciaId, String clave) {
         return carteras.debitar(clienteId, monto).map(saldo -> movimientos.saveAndFlush(
                 new MovimientoCarteraEntity(clienteId, tipo, monto, fecha, referenciaId, clave, saldo, Instant.now())));
     }

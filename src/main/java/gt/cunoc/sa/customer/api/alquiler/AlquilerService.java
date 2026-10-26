@@ -210,7 +210,7 @@ public class AlquilerService {
         LocalDate fecha = conHoy(fechaPago);
         alquiler.pagar(fecha);
         libro.debitar(cliente.getId(), TipoMovimiento.DEBITO_ALQUILER, alquiler.getPrecioFinal(), fecha,
-                        alquiler.getId(), LibroCartera.clavePagoAlquiler(alquiler.getId()))
+                        alquiler.getId().toString(), LibroCartera.clavePagoAlquiler(alquiler.getId()))
                 .orElseThrow(() -> ErrorDeNegocio.noProcesable(LibroCartera.SALDO_INSUFICIENTE));
         eventos.pagado(alquiler, cliente, MetodoPago.CARTERA);
         return AlquilerResponse.de(alquiler, cliente);

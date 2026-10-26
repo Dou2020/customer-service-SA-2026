@@ -18,7 +18,7 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "cliente")
-public class ClienteEntity extends ConIdAsignado {
+public class ClienteEntity extends ConIdAsignado<UUID> {
 
     @Id
     private UUID id;

@@ -13,14 +13,16 @@ import gt.cunoc.sa.customer.domain.Canal;
  * historial del cliente. Solo los campos que customer usa; el resto del payload se ignora.
  * aggregateId = ventaId y aggregateVersion = versión de la venta.
  *
+ * @param ventaId   id de sales, como texto ("123" o un UUID)
  * @param clienteId el que resolvió S5; si después lo absorbió una cuenta, customer sigue la lápida
+ * @param viajeId   id de trip, como texto
  * @param salida    fecha y hora de salida del viaje
  */
 public record BoletosVendidos(
-        UUID ventaId,
+        String ventaId,
         UUID clienteId,
         Canal canal,
-        UUID viajeId,
+        String viajeId,
         String origen,
         String destino,
         Instant salida,

@@ -59,7 +59,7 @@ class EnlaceDeCuentasIT {
     void alConfirmarseConUnNitQueYaComproEnMostradorLaCuentaLoEnlaza() {
         String nit = Escenario.nit();
         UUID presencial = escenario.presencial(nit);
-        UUID compra = escenario.compra(presencial, "PRESENCIAL");
+        String compra = escenario.compra(presencial, "PRESENCIAL");
         UUID usuarioId = UUID.randomUUID();
 
         aplicar(usuarioId, 1, nit);
@@ -117,7 +117,7 @@ class EnlaceDeCuentasIT {
 
         String nitNuevo = Escenario.nit();
         UUID presencial = escenario.presencial(nitNuevo);
-        UUID compra = escenario.compra(presencial, "PRESENCIAL");
+        String compra = escenario.compra(presencial, "PRESENCIAL");
         UUID alquiler = escenario.alquiler(presencial, UUID.randomUUID(), "PRESENCIAL", "FINALIZADO");
         // Una lápida anterior que apuntaba al cliente presencial pasa a apuntar a la cuenta.
         UUID lapidaVieja = UUID.randomUUID();

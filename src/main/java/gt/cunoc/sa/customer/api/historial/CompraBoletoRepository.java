@@ -9,7 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 
 import gt.cunoc.sa.customer.domain.CompraBoletoEntity;
 
-public interface CompraBoletoRepository extends JpaRepository<CompraBoletoEntity, UUID>,
+/** La PK es el ventaId de sales, como texto (V3). */
+public interface CompraBoletoRepository extends JpaRepository<CompraBoletoEntity, String>,
         JpaSpecificationExecutor<CompraBoletoEntity> {
 
     /** Absorción (cambio de NIT): lo comprado en mostrador con ese NIT pasa a la cuenta. */

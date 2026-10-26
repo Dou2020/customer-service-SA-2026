@@ -5,17 +5,21 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import gt.cunoc.sa.customer.domain.Canal;
 import gt.cunoc.sa.customer.domain.CompraBoletoEntity;
 import gt.cunoc.sa.customer.domain.EstadoCompra;
 
-/** Una compra de boletos del historial, en línea o en mostrador. */
+/**
+ * Una compra de boletos del historial, en línea o en mostrador.
+ *
+ * @param ventaId id de sales, como texto ("123" o un UUID)
+ * @param viajeId id de trip, como texto
+ */
 public record CompraResponse(
-        UUID ventaId,
+        String ventaId,
         Canal canal,
-        UUID viajeId,
+        String viajeId,
         String origen,
         String destino,
         Instant salida,

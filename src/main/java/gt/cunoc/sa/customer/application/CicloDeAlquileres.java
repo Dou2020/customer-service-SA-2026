@@ -59,12 +59,13 @@ public class CicloDeAlquileres {
             return;
         }
         AlquilerAsignado asignacion = Payloads.leer(json, sobre, AlquilerAsignado.class);
-        Payloads.exigir(asignacion.alquilerId() != null && asignacion.viajeId() != null
-                && asignacion.busId() != null && asignacion.choferId() != null, sobre,
-                "alquilerId, viajeId, busId o choferId");
+        Payloads.exigir(asignacion.alquilerId() != null, sobre, "alquilerId");
+        String viajeId = Payloads.exigirId(asignacion.viajeId(), sobre, "viajeId");
+        String busId = Payloads.exigirId(asignacion.busId(), sobre, "busId");
+        String choferId = Payloads.exigirId(asignacion.choferId(), sobre, "choferId");
         AlquilerEntity alquiler = buscar(asignacion.alquilerId(), sobre);
-        if (!alquiler.asignar(asignacion.viajeId(), asignacion.busId(), asignacion.placa(), asignacion.choferId(),
-                asignacion.choferNombre(), sobre.aggregateVersion())) {
+        if (!alquiler.asignar(viajeId, busId, asignacion.placa(), choferId, asignacion.choferNombre(),
+                sobre.aggregateVersion())) {
             log.info("AlquilerAsignado v{} del alquiler {} no aplica ({}); se descarta", sobre.aggregateVersion(),
                     alquiler.getId(), alquiler.getEstado());
         }
@@ -105,9 +106,18 @@ public class CicloDeAlquileres {
         eventos.cancelado(alquiler, cliente, true, fecha, reembolso.isPresent() ? Reembolso.CARTERA : Reembolso.CAJA);
     }
 
+    /**
+     * E8 y E9 dejan el viajeId en el alquiler si E15 no lo dejó antes, así que se valida aunque
+     * pueda faltar. E10 no lo guarda y no lo revisa: como los demás campos que customer no usa, un
+     * viajeId malo ahí no justifica dejar el reembolso en la DLQ.
+     */
     private void avanzar(Sobre sobre, Transicion transicion) {
         ViajeDeAlquiler viaje = viajeDeAlquiler(sobre);
-        if (viaje == null || !inbox.primeraVez(sobre.eventId())) {
+        if (viaje == null) {
+            return;
+        }
+        Payloads.idOpcional(viaje.viajeId(), sobre, "viajeId");
+        if (!inbox.primeraVez(sobre.eventId())) {
             return;
         }
         AlquilerEntity alquiler = buscar(viaje.alquilerId(), sobre);

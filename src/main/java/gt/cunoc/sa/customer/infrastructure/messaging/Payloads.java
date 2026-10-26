@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public final class Payloads {
 
+    /** El largo de las columnas que guardan ids de fleet, trip y sales (V3). */
+    public static final int LARGO_ID = 64;
+
     private Payloads() {
     }
 
@@ -27,5 +30,26 @@ public final class Payloads {
         if (!condicion) {
             throw new EventoNoProcesableException(sobre.type() + " sin " + falta);
         }
+    }
+
+    /**
+     * Un id obligatorio de fleet, trip o sales. Llega como texto (su id numérico, "123", o un
+     * UUID) y se guarda tal cual, sin interpretarlo; si el productor lo manda como número JSON,
+     * Jackson lo lee como el mismo texto. Uno vacío o más largo que la columna no identifica nada
+     * y tampoco se arregla reintentando: directo a la DLQ, antes de que la base lo rechace con un
+     * error que se reintentaría.
+     */
+    public static String exigirId(String id, Sobre sobre, String campo) {
+        exigir(id != null, sobre, campo);
+        if (id.isBlank() || id.length() > LARGO_ID) {
+            throw new EventoNoProcesableException(sobre.type() + " con " + campo + " vacío o de más de "
+                    + LARGO_ID + " caracteres");
+        }
+        return id;
+    }
+
+    /** Igual que exigirId, para un id que el evento puede no traer: null pasa, vacío no. */
+    public static String idOpcional(String id, Sobre sobre, String campo) {
+        return id == null ? null : exigirId(id, sobre, campo);
     }
 }

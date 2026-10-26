@@ -46,7 +46,9 @@ Las mismas que identity-service; aquí va lo propio de customer y un enlace para
 
 Igual que en identity ([Autenticación](../identity-service/API.md#autenticación)): el gateway valida el
 JWT y reenvía `X-User-Id`, `X-User-Roles`, `X-Sucursal-Id` y `X-Chofer-Id`. customer no tiene rutas
-públicas: todo `/api/**` exige token. Llamando directo al puerto 8087 en desarrollo, se ponen a mano:
+públicas: todo `/api/**` exige token. `X-User-Id` y `X-Sucursal-Id` son UUID (uno que no lo es se trata como
+anónimo → `401`); `X-Chofer-Id` es el id del chofer en fleet, como texto (`3`), y no se valida. Llamando directo
+al puerto 8087 en desarrollo, se ponen a mano:
 
 ```bash
 curl -H 'X-User-Id: 0d3f5a1e-6c2b-4f7e-9a8d-1b2c3d4e5f60' -H 'X-User-Roles: CUSTOMER' \
@@ -68,6 +70,12 @@ token); uno de otra → `403`. El `SYS_ADMIN` ve todas.
 
 Como en identity ([Formatos](../identity-service/API.md#formatos)): JSON en UTF-8, ids UUID, instantes
 ISO-8601 en UTC, fechas de negocio `AAAA-MM-DD` ("hoy" en `America/Guatemala`) y montos como número JSON.
+
+Los ids de fleet, trip y sales (venta, viaje, bus, chofer) son **texto**, no UUID: esos servicios usan ids
+numéricos, y customer los guarda y los devuelve tal cual llegan (`"101"`, o un UUID en texto), con hasta 64
+caracteres. Siguen siendo UUID los de customer (cliente, alquiler) y los de identity (usuario, sucursal); el
+de un movimiento de la cartera es un número. En JSON un UUID y un texto son el mismo string, así que el
+frontend los lee igual.
 Toda operación con fecha de negocio (recarga, pago, solicitud de alquiler) la recibe del usuario, con hoy
 por defecto (README del proyecto, "Fechas").
 
@@ -139,7 +147,7 @@ lugar de identity en los `503` y `504`.
 |---|---|
 | `tipo` | `TipoMovimiento` |
 | `fecha` | la que eligió el usuario (o la de pago de la venta o el alquiler) |
-| `referenciaId` | la venta o el alquiler que lo originó; `null` en una recarga |
+| `referenciaId` | la venta (el `referenciaId` que mandó sales en S4) o el alquiler que lo originó, como texto; `null` en una recarga |
 | `saldoResultante` | saldo después del movimiento |
 
 ```json
@@ -160,7 +168,7 @@ lugar de identity en los `503` y `504`.
 | `precioEstimado` | el que calculó el sistema al solicitarlo; no cambia aunque cambien las tarifas |
 | `precioFinal` | el confirmado por la sucursal; `null` hasta entonces |
 | `fechaPago` | la que eligió quien pagó; `null` hasta el pago |
-| `viajeId`, `busId`, `busPlaca`, `choferId`, `choferNombre` | `null` hasta que trip asigna bus y chofer |
+| `viajeId`, `busId`, `busPlaca`, `choferId`, `choferNombre` | `null` hasta que trip asigna bus y chofer. `viajeId` (de trip) y `busId` y `choferId` (de fleet) son texto: `"101"`, `"7"`, `"3"` |
 | `motivo` | del rechazo o la cancelación |
 
 ```json
@@ -274,7 +282,7 @@ se compraron con su NIT, y los que absorbió al cambiar de NIT.
   "clienteId": "5d1f…", "nit": "12345679", "nombre": "Ana López",
   "boletos": [
     {
-      "ventaId": "c0a8…", "canal": "PRESENCIAL", "viajeId": "77b1…", "origen": "Quetzaltenango",
+      "ventaId": "c0a8…", "canal": "PRESENCIAL", "viajeId": "101", "origen": "Quetzaltenango",
       "destino": "Ciudad de Guatemala", "salida": "2026-10-20T12:00:00Z", "asientos": [12, 13],
       "total": 70.00, "fechaPago": "2026-09-20", "estado": "CONFIRMADA"
     }
@@ -285,7 +293,7 @@ se compraron con su NIT, y los que absorbió al cambiar de NIT.
 
 Los boletos son la réplica que customer arma con `BoletosVendidos` y `BoletosAnulados`: una compra recién
 hecha aparece en cuanto llega el evento (milisegundos). Una compra anulada sigue apareciendo, como
-`ANULADA`.
+`ANULADA`. `ventaId` y `viajeId` son los ids de sales y trip, como texto, tal cual los mandaron.
 
 ---
 
@@ -561,7 +569,7 @@ S4: el débito que paga una compra de boletos en línea.
 |---|---|---|---|
 | `monto` | número | sí | mayor que 0, hasta 2 decimales |
 | `fecha` | `AAAA-MM-DD` | no | la fecha de pago que eligió el comprador; hoy por defecto |
-| `referenciaId` | UUID | no | la venta |
+| `referenciaId` | UUID | no | la venta. S4 sigue pidiendo un UUID; el movimiento lo guarda como texto, igual que los demás ids de sales |
 
 **`201`** al aplicarlo; **`200`** con el mismo cuerpo si ya se había aplicado con esa clave (un solo cargo):
 
@@ -680,18 +688,25 @@ a la cartera), `CAJA` (se pagó en efectivo: se devuelve en la sucursal) o `NING
 
 Cada evento se aplica en una transacción con su inbox (`processed_event`): uno repetido no tiene efecto.
 Lo transitorio se reintenta a 1, 2, 4 y 8 s y después va a la DLQ; lo que nunca va a funcionar (payload
-ilegible, dato obligatorio que falta, alquiler o cliente que no existe) va directo a la DLQ.
+ilegible, dato obligatorio que falta, un id vacío o de más de 64 caracteres, alquiler o cliente que no
+existe) va directo a la DLQ.
 
-Los productores que todavía no existen (trip, sales) tienen que publicar **al menos** estos campos:
+**Ids de fleet, trip y sales: texto.** `viajeId`, `busId`, `choferId` y `ventaId` se leen como string y se
+guardan tal cual: el id numérico del productor (`"101"`) o un UUID en texto. Un número JSON (`101`) también
+entra, como el mismo texto. Vacío o de más de 64 caracteres → DLQ. `alquilerId` y `clienteId` siguen siendo
+UUID: son ids de customer.
+
+Los productores que todavía no publican en `transporte.events` (trip, sales) tienen que mandar **al menos**
+estos campos:
 
 | Evento | Payload que customer lee | Qué hace |
 |---|---|---|
 | E2 `identity.configuracion.actualizada` | `{tarifaId, tipo, valor, vigenteDesde}` | Guarda la versión de `ALQUILER_KM` o `ALQUILER_DIA` con el id de identity; descarta `DEPRECIACION_KM` |
 | E4 `identity.perfil.guardado` | `{usuarioId, nit, nombreCompleto, correo, telefono}`; `aggregateVersion` = versión del perfil | Crea el cliente de la cuenta o lo enlaza por NIT; al cambiar el NIT, absorbe lo que el NIT nuevo compró en mostrador (README del proyecto, "PerfilGuardado en customer"). Una versión vieja se descarta. El NIT de otra cuenta es reintentable y luego DLQ |
-| E8 `trip.viaje.iniciado` · E9 `trip.viaje.finalizado` · E10 `trip.viaje.eliminado` | `{viajeId, tipo, alquilerId}`; `alquilerId` es el del E14 que creó el viaje, y `null` en uno `REGULAR` | Los `REGULAR` se ignoran. E8 → `EN_CURSO`; E9 → `FINALIZADO`; E10 sobre uno `PAGADO` o `ASIGNADO` → `CANCELADO`, reembolso a la cartera si se pagó con ella (`REEMBOLSO`, clave `REEMBOLSO-ALQUILER:<id>`, `fecha` = `occurredAt` en Guatemala) y E16 |
-| E15 `trip.alquiler.asignado` | `{alquilerId, viajeId, busId, placa, choferId, choferNombre}`; `aggregateVersion` = versión del viaje | Guarda bus y chofer (`PAGADO` → `ASIGNADO`). trip lo emite **en cada asignación o reasignación**; una reasignación más vieja que la última aplicada se descarta |
-| E11 `sales.boletos.vendidos` | `{ventaId, clienteId, canal, viajeId, origen, destino, salida, asientos, total, fechaPago}`; `aggregateVersion` = versión de la venta | Agrega la compra al historial (`CONFIRMADA`). Si el cliente fue absorbido, sigue la lápida hasta la cuenta. Las del genérico `CF` no se guardan: son anónimas |
-| E12 `sales.boletos.anulados` | los mismos campos de E11 y `motivo` | Marca la compra `ANULADA` (aunque llegue antes que E11: gana la versión mayor) y devuelve a la cartera **exactamente lo que se debitó** con la clave `ventaId` (`REEMBOLSO`, clave `REEMBOLSO:<ventaId>`). Sin débito (mostrador, o pago anulado por la lápida) no devuelve nada |
+| E8 `trip.viaje.iniciado` · E9 `trip.viaje.finalizado` · E10 `trip.viaje.eliminado` | `{viajeId, tipo, alquilerId}`; `alquilerId` es el del E14 que creó el viaje, y `null` en uno `REGULAR`. `viajeId` (texto) es opcional: E8 y E9 lo dejan en el alquiler si E15 no lo dejó antes (vacío o de más de 64 → DLQ); E10 no lo lee | Los `REGULAR` se ignoran, sin revisar nada más. E8 → `EN_CURSO`; E9 → `FINALIZADO`; E10 sobre uno `PAGADO` o `ASIGNADO` → `CANCELADO`, reembolso a la cartera si se pagó con ella (`REEMBOLSO`, clave `REEMBOLSO-ALQUILER:<id>`, `fecha` = `occurredAt` en Guatemala) y E16 |
+| E15 `trip.alquiler.asignado` | `{alquilerId, viajeId, busId, placa, choferId, choferNombre}`; `viajeId`, `busId` y `choferId` obligatorios, texto; `aggregateVersion` = versión del viaje | Guarda bus y chofer (`PAGADO` → `ASIGNADO`). trip lo emite **en cada asignación o reasignación**; una reasignación más vieja que la última aplicada se descarta |
+| E11 `sales.boletos.vendidos` | `{ventaId, clienteId, canal, viajeId, origen, destino, salida, asientos, total, fechaPago}`; `ventaId` y `viajeId` obligatorios, texto; `aggregateVersion` = versión de la venta | Agrega la compra al historial (`CONFIRMADA`). Si el cliente fue absorbido, sigue la lápida hasta la cuenta. Las del genérico `CF` no se guardan: son anónimas |
+| E12 `sales.boletos.anulados` | los mismos campos de E11 y `motivo` | Marca la compra `ANULADA` (aunque llegue antes que E11: gana la versión mayor) y devuelve a la cartera **exactamente lo que se debitó** con la clave `ventaId` (`REEMBOLSO`, clave `REEMBOLSO:<ventaId>`, hasta 74 caracteres). Sin débito (mostrador, o pago anulado por la lápida) no devuelve nada |
 
 ---
 

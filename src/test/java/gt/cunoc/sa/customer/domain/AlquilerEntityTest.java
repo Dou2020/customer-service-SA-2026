@@ -51,26 +51,29 @@ class AlquilerEntityTest {
     @Test
     void unaReasignacionViejaNoPisaALaNueva() {
         AlquilerEntity alquiler = pagado();
-        UUID viaje = UUID.randomUUID();
+        // Los ids de trip y fleet llegan como texto: numéricos hoy, y un UUID en texto también vale.
+        String viaje = "101";
 
-        assertThat(alquiler.asignar(viaje, UUID.randomUUID(), "P-111AAA", UUID.randomUUID(), "Uno", 1)).isTrue();
+        assertThat(alquiler.asignar(viaje, "7", "P-111AAA", "3", "Uno", 1)).isTrue();
         assertThat(alquiler.getEstado()).isEqualTo(EstadoAlquiler.ASIGNADO);
-        assertThat(alquiler.asignar(viaje, UUID.randomUUID(), "P-333CCC", UUID.randomUUID(), "Tres", 3)).isTrue();
-        assertThat(alquiler.asignar(viaje, UUID.randomUUID(), "P-222BBB", UUID.randomUUID(), "Dos", 2)).isFalse();
+        assertThat(alquiler.asignar(viaje, "9", "P-333CCC", UUID.randomUUID().toString(), "Tres", 3)).isTrue();
+        assertThat(alquiler.asignar(viaje, "8", "P-222BBB", "4", "Dos", 2)).isFalse();
         assertThat(alquiler.getBusPlaca()).isEqualTo("P-333CCC");
+        assertThat(alquiler.getBusId()).isEqualTo("9");
+        assertThat(alquiler.getViajeId()).isEqualTo("101");
     }
 
     @Test
     void sinPagarNoSeAsigna() {
         AlquilerEntity alquiler = solicitado();
-        assertThat(alquiler.asignar(UUID.randomUUID(), UUID.randomUUID(), "P-1", UUID.randomUUID(), "X", 1)).isFalse();
+        assertThat(alquiler.asignar("101", "7", "P-1", "3", "X", 1)).isFalse();
         assertThat(alquiler.getEstado()).isEqualTo(EstadoAlquiler.SOLICITADO);
     }
 
     @Test
     void losEstadosDelViajeSoloAvanzan() {
         AlquilerEntity alquiler = pagado();
-        UUID viaje = UUID.randomUUID();
+        String viaje = "101";
 
         // El E9 llegó antes que el E8: el alquiler termina igual.
         assertThat(alquiler.finalizar(viaje)).isTrue();

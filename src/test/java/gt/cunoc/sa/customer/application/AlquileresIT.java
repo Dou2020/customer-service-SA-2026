@@ -178,7 +178,7 @@ class AlquileresIT {
         Sobre e14 = eventos.esperar(TiposEvento.ALQUILER_PAGADO, s -> s.aggregateId().equals(id));
         assertThat(e14.payload().get("metodoPago").asText()).isEqualTo("EFECTIVO");
         assertThat(e14.payload().get("nit").asText()).isEqualTo(nit);
-        assertThat(jdbc.queryForObject("select count(*) from movimiento_cartera where referencia_id = ?::uuid",
+        assertThat(jdbc.queryForObject("select count(*) from movimiento_cartera where referencia_id = ?",
                 Integer.class, id)).isZero();
     }
 

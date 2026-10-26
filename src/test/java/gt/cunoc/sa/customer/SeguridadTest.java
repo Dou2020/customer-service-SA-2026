@@ -47,6 +47,19 @@ class SeguridadTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * El chofer es un id de fleet, como texto ("3"), no un UUID: un DRIVER queda autenticado (su
+     * cuenta todavía sin cliente da 409, no 401, que haría al frontend cerrar la sesión).
+     */
+    @Test
+    void unChoferConIdNumericoQuedaAutenticado() throws Exception {
+        mvc.perform(get("/api/cartera")
+                        .header("X-User-Id", UUID.randomUUID().toString())
+                        .header("X-User-Roles", "DRIVER")
+                        .header("X-Chofer-Id", "3"))
+                .andExpect(status().isConflict());
+    }
+
     @Test
     void healthEsPublico() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());

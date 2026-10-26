@@ -14,7 +14,8 @@ import gt.cunoc.sa.customer.domain.Trayecto;
 /**
  * @param clienteNit null si el cliente es una cuenta sin NIT
  * @param precioFinal null hasta que la sucursal lo confirma
- * @param busPlaca    y el resto de la asignación, null hasta que trip asigna bus y chofer
+ * @param viajeId     y el resto de la asignación, null hasta que trip asigna bus y chofer. viajeId
+ *                    es el id de trip y busId y choferId los de fleet, como texto ("101" o un UUID)
  */
 public record AlquilerResponse(
         UUID id,
@@ -39,10 +40,10 @@ public record AlquilerResponse(
         BigDecimal precioFinal,
         EstadoAlquiler estado,
         LocalDate fechaPago,
-        UUID viajeId,
-        UUID busId,
+        String viajeId,
+        String busId,
         String busPlaca,
-        UUID choferId,
+        String choferId,
         String choferNombre,
         String motivo,
         Instant creadoEn) {
